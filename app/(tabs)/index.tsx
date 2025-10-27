@@ -16,7 +16,7 @@ import { InfoBanner } from '../components/InfoBanner';
 import { MovieCard } from '../components/MovieCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { Movie } from '../types/movie';
-import { HERO_PLACEHOLDER_COPY } from '../data/fallbackMovies';
+import { FALLBACK_POSTER, HERO_PLACEHOLDER_COPY } from '../data/fallbackMovies';
 import { useNowPlaying } from '../hooks/useNowPlaying';
 
 const RECOMMENDATION_COPY =
@@ -27,9 +27,21 @@ export default function HomeScreen() {
   const { movies, loading, error, refresh } = useNowPlaying({ limit: 24 });
 
   const heroMovie = useMemo<Movie>(() => {
+    const base: Movie = {
+      titulo: 'Recomendações personalizadas',
+      poster: FALLBACK_POSTER,
+      sinopse: HERO_PLACEHOLDER_COPY,
+    };
+
     const first = movies[0];
+    if (!first) {
+      return base;
+    }
+
     return {
+      ...base,
       ...first,
+      poster: first.poster ?? FALLBACK_POSTER,
       sinopse: first.sinopse ?? HERO_PLACEHOLDER_COPY,
     };
   }, [movies]);
