@@ -1,13 +1,46 @@
-import { Stack } from 'expo-router';
-import { ThemeProvider } from '../context/ThemeContext'; // ajuste o caminho se necessário
+import { FontAwesome } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { useTheme } from '../context/ThemeContext';
 
-export default function RootLayout() {
+const TAB_ICONS: Record<string, keyof typeof FontAwesome.glyphMap> = {
+  index: 'home',
+  FilmesEmCartaz: 'ticket',
+  settings: 'sliders',
+  about: 'info-circle',
+};
+
+export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
-    <ThemeProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <Tabs
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          paddingVertical: 8,
+          height: 64,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+        tabBarIcon: ({ color, size }) => (
+          <FontAwesome
+            name={TAB_ICONS[route.name] ?? 'circle'}
+            size={size}
+            color={color}
+          />
+        ),
+      })}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Início' }} />
+      <Tabs.Screen name="FilmesEmCartaz" options={{ title: 'Em cartaz' }} />
+      <Tabs.Screen name="settings" options={{ title: 'Preferências' }} />
+      <Tabs.Screen name="about" options={{ title: 'Sobre' }} />
+    </Tabs>
   );
 }
