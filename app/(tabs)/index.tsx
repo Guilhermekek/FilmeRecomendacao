@@ -1,257 +1,261 @@
-// app/(tabs)/index.tsx
-import MaskedView from '@react-native-masked-view/masked-view';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
-  Image,
-  LayoutChangeEvent,
-  Pressable,
+  Alert,
+  Linking,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedProps,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../context/ThemeContext';
+import { HeroBanner } from '../components/HeroBanner';
+import { InfoBanner } from '../components/InfoBanner';
+import { MovieCard } from '../components/MovieCard';
+import { SectionHeader } from '../components/SectionHeader';
+import { Movie } from '../types/movie';
+import { FALLBACK_POSTER, HERO_PLACEHOLDER_COPY } from '../data/fallbackMovies';
+import { useNowPlaying } from '../hooks/useNowPlaying';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SIZE = 200;
-const MARGIN = 20;
-const INITIAL_OFFSET = (SCREEN_WIDTH - SIZE) / 2;
-
-interface Filme {
-  titulo: string;
-  poster: string;
-}
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+const RECOMMENDATION_COPY =
+  'Com base na sua lista de favoritos, priorizamos filmes com diretores recorrentes, elencos familiares e gêneros que você mais assiste.';
 
 export default function HomeScreen() {
-  const { darkMode } = useTheme();
-  const styles = getStyles(darkMode);
+  const { colors, darkMode } = useTheme();
+  const { movies, loading, error, refresh } = useNowPlaying({ limit: 24 });
 
-  // Intro states
-  const [showIntro, setShowIntro] = useState(true);
-  const [dims, setDims] = useState({ width: 0, height: 0 });
-  const dashOffset = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const heroMovie = useMemo<Movie>(() => {
+    const base: Movie = {
+      titulo: 'Recomendações personalizadas',
+      poster: FALLBACK_POSTER,
+      sinopse: HERO_PLACEHOLDER_COPY,
+    };
 
-  // Carousel states
-  const [items, setItems] = useState<Filme[]>([]);
-  const [loading, setLoading] = useState(true);
-  const offset = useSharedValue<number>(INITIAL_OFFSET);
-
-  // Medir o "N" invisível
-  const onLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    setDims({ width, height });
-    dashOffset.value = width + Math.hypot(width, height) + height;
-  };
-
-  // Sequência da intro: revelar → pausa → zoom → esconder
-  useEffect(() => {
-    const { width, height } = dims;
-    if (width && height) {
-      const total = height + Math.hypot(width, height) + height;
-      dashOffset.value = withSequence(
-        withTiming(0, { duration: 1000, easing: Easing.out(Easing.quad) }),
-        withDelay(400,
-          withTiming(-total, { duration: 1000, easing: Easing.in(Easing.quad) })
-        )
-      );
-      scale.value = withDelay(1000, withTiming(2, { duration: 2000 }));
+    const first = movies[0];
+    if (!first) {
+      return base;
     }
-  }, [dims, dashOffset, scale]);
 
-  // Esconde a intro depois de 2.5s
-  useEffect(() => {
-    const t = setTimeout(() => setShowIntro(false), 2500);
-    return () => clearTimeout(t);
-  }, []);
+    return {
+      ...base,
+      ...first,
+      poster: first.poster ?? FALLBACK_POSTER,
+      sinopse: first.sinopse ?? HERO_PLACEHOLDER_COPY,
+    };
+  }, [movies]);
 
-  // Buscar filmes via API
-  useEffect(() => {
-    fetch('http://localhost:3000/filmes/now-playing')
-      .then(r => r.json())
-      .then((data: Filme[]) => setItems(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const curatedSections = useMemo(
+    () => ({
+      topMatches: movies.slice(1, 7),
+      directors: movies.slice(7, 13),
+      mood: movies.slice(13, 19),
+      freshPicks: movies.slice(19, 24),
+    }),
+    [movies],
+  );
 
-  // Animação do carrossel
-  const animatedCarouselStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: offset.value }],
-  }));
-  const advanceBy = (position: number) => {
-    const step = SIZE + 2 * MARGIN;
-    const TOTAL_WIDTH = items.length * (SIZE + 2 * MARGIN);
-    const RIGHT_BOUNDARY = -(TOTAL_WIDTH - SCREEN_WIDTH);
-    const maxLeft = INITIAL_OFFSET;
-    const maxRight = RIGHT_BOUNDARY + INITIAL_OFFSET;
-    const newOffset = offset.value + step * -position;
-
-    if (newOffset <= maxLeft && newOffset >= maxRight) {
-      offset.value = withSpring(newOffset, {
-        restDisplacementThreshold: 5,
-        restSpeedThreshold: 5,
-      });
-    }
-  };
-
-  // Props animados da intro
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: dashOffset.value,
-  }));
-  const animatedMaskStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  // Se ainda no loading de filmes, mostra spinner (após intro)
-  if (!showIntro && loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={darkMode ? '#fff' : '#000'} />
-      </View>
-    );
-  }
-
-  // Se no intro, renderiza só ela
-  if (showIntro) {
-    return (
-      <View style={styles.container}>
-        {dims.width === 0 ? (
-          <Text
-            onLayout={onLayout}
-            style={[styles.introText, styles.invisible]}
-          >
-            N
-          </Text>
-        ) : (
-          <MaskedView
-            style={{ width: dims.width, height: dims.height }}
-            maskElement={
-              <Animated.View style={animatedMaskStyle}>
-                <Svg width={dims.width} height={dims.height}>
-                  <AnimatedPath
-                    d={`M0 ${dims.height} L0 0 L${dims.width} ${dims.height} L${dims.width} 0`}
-                    stroke="#E50914"
-                    strokeWidth={dims.height * 0.25}
-                    strokeDasharray={
-                      dims.height +
-                      Math.hypot(dims.width, dims.height) +
-                      dims.height
-                    }
-                    animatedProps={animatedProps}
-                    fill="none"
-                  />
-                </Svg>
-              </Animated.View>
-            }
-          >
-            <Text style={styles.introText}>N</Text>
-          </MaskedView>
-        )}
-      </View>
-    );
-  }
-
-  // Resto: carrossel
   return (
-    <View style={styles.container}>
-      <View style={styles.buttonWrapper}>
-        <Pressable onPress={() => advanceBy(-1)} style={styles.navButton}>
-          <Text style={styles.buttonItem}>{'<'}</Text>
-        </Pressable>
-        <Pressable onPress={() => advanceBy(1)} style={styles.navButton}>
-          <Text style={styles.buttonItem}>{'>'}</Text>
-        </Pressable>
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 48 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}> 
+          <Text style={[styles.greeting, { color: colors.text }]}>Boa noite, cinéfilo!</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>{RECOMMENDATION_COPY}</Text>
+        </View>
 
-      <Animated.View style={[styles.row, animatedCarouselStyle]}>
-        {items.map(item => (
-          <View key={item.titulo} style={styles.box}>
-            <Image source={{ uri: item.poster }} style={styles.poster} />
-            <Text style={styles.title}>{item.titulo}</Text>
-          </View>
-        ))}
-      </Animated.View>
-    </View>
+        <HeroBanner
+          movie={heroMovie}
+          onPrimaryAction={movie => {
+            if (movie.trailer) {
+              Linking.openURL(movie.trailer).catch(() =>
+                Alert.alert('Ops!', 'Não foi possível abrir o trailer agora.'),
+              );
+            } else {
+              Alert.alert('Trailer indisponível', 'Adicionaremos um trailer em breve.');
+            }
+          }}
+          onSecondaryAction={() => {
+            Alert.alert('Em breve', 'Logo você poderá adicionar filmes à sua lista personalizada.');
+          }}
+        />
+
+        {error ? (
+          <InfoBanner
+            message={error}
+            actionLabel="Tentar novamente"
+            onPress={() => refresh()}
+            tone="danger"
+          />
+        ) : null}
+
+        <View style={styles.section}>
+          <SectionHeader
+            title="Seus matches perfeitos"
+            subtitle="Baseado nos gêneros e atores que você mais curte"
+          />
+          {loading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={colors.accent} />
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {curatedSections.topMatches.map(item => (
+                <MovieCard
+                  key={`top-${item.titulo}`}
+                  movie={item}
+                  size="medium"
+                  footer={
+                    item.nota ? (
+                      <Text style={[styles.badge, { color: colors.text }]}>⭐ {item.nota.toFixed(1)}</Text>
+                    ) : null
+                  }
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            title="Diretores recorrentes"
+            subtitle="Os cineastas que você mais acompanha"
+            actionLabel="Ver todos"
+            onActionPress={() => {}}
+          />
+          {loading ? (
+            <View style={styles.loadingRowSmall}>
+              <ActivityIndicator size="small" color={colors.accent} />
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {curatedSections.directors.map(item => (
+                <MovieCard
+                  key={`director-${item.titulo}`}
+                  movie={item}
+                  size="small"
+                  footer={<Text style={[styles.footerLabel, { color: colors.textMuted }]}>Direção favorita</Text>}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            title="Sessão para o seu humor"
+            subtitle="Combine emoções, diretores e elencos da sua lista"
+          />
+          {loading ? (
+            <View style={styles.loadingRowSmall}>
+              <ActivityIndicator size="small" color={colors.accent} />
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {curatedSections.mood.map(item => (
+                <MovieCard
+                  key={`mood-${item.titulo}`}
+                  movie={item}
+                  size="small"
+                  footer={<Text style={[styles.footerLabel, { color: colors.textMuted }]}>Ideal hoje</Text>}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            title="Adições recentes"
+            subtitle="Filmes que combinam com o seu histórico e acabaram de chegar"
+          />
+          {loading ? (
+            <View style={styles.loadingRowSmall}>
+              <ActivityIndicator size="small" color={colors.accent} />
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {curatedSections.freshPicks.map(item => (
+                <MovieCard
+                  key={`fresh-${item.titulo}`}
+                  movie={item}
+                  size="small"
+                  footer={<Text style={[styles.footerLabel, { color: colors.textMuted }]}>Novo por aqui</Text>}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-    },
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+  },
+  header: {
+    marginTop: 16,
+    marginBottom: 24,
+    gap: 8,
+  },
+  greeting: {
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  section: {
+    marginTop: 32,
+  },
+  horizontalList: {
+    paddingRight: 24,
+  },
+  loadingRow: {
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingRowSmall: {
+    height: 170,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  footerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+});
 
-    buttonWrapper: {
-      position: 'absolute',
-      top: '45%',
-      width: '100%',
-      zIndex: 1,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingHorizontal: 10,
-    },
-    navButton: {
-      width: SIZE / 3,
-      height: SIZE / 3,
-      borderRadius: SIZE,
-      backgroundColor: isDark ? '#666' : '#ccc',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    buttonItem: {
-      color: '#fff',
-      fontSize: 30,
-      fontWeight: 'bold',
-    },
-
-    row: {
-      flexDirection: 'row',
-      alignSelf: 'center',
-    },
-    box: {
-      width: SIZE,
-      marginHorizontal: MARGIN,
-      alignItems: 'center',
-    },
-    poster: {
-      width: SIZE,
-      height: SIZE,
-      borderRadius: 8,
-      resizeMode: 'cover',
-    },
-    title: {
-      marginTop: 8,
-      fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
-      textAlign: 'center',
-    },
-    // intro
-    introText: {
-      fontSize: 120,
-      fontWeight: '900',
-      color: '#E50914',
-    },
-    invisible: {
-      position: 'absolute',
-      opacity: 0,
-    },
-  });

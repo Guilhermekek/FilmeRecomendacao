@@ -1,39 +1,68 @@
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Checkbox from 'expo-checkbox';
+import ExpoCheckbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../context/ThemeContext';
+
+const STORAGE_KEYS = {
+  username: '@cineai/username',
+  password: '@cineai/password',
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { darkMode } = useTheme();
+  const { colors, darkMode } = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
-    if (rememberMe) {
-      await AsyncStorage.setItem('username', username);
-      await AsyncStorage.setItem('password', password);
+    if (!username || !password) {
+      setError('Informe usuário e senha para continuar.');
+      return;
     }
-    alert(`Logado como ${username}`);
+
+    setError(null);
+
+    if (rememberMe) {
+      await AsyncStorage.multiSet([
+        [STORAGE_KEYS.username, username],
+        [STORAGE_KEYS.password, password],
+      ]);
+    } else {
+      await AsyncStorage.multiRemove([STORAGE_KEYS.username, STORAGE_KEYS.password]);
+    }
+
+    router.replace('/(tabs)/index');
   };
 
   const loadSavedCredentials = async () => {
-    const savedUsername = await AsyncStorage.getItem('username');
-    const savedPassword = await AsyncStorage.getItem('password');
-    if (savedUsername && savedPassword) {
-      setUsername(savedUsername);
-      setPassword(savedPassword);
+    const [savedUsername, savedPassword] = await AsyncStorage.multiGet([
+      STORAGE_KEYS.username,
+      STORAGE_KEYS.password,
+    ]);
+
+    const storedUser = savedUsername[1];
+    const storedPass = savedPassword[1];
+
+    if (storedUser && storedPass) {
+      setUsername(storedUser);
+      setPassword(storedPass);
       setRememberMe(true);
     }
   };
@@ -42,148 +71,188 @@ export default function LoginPage() {
     loadSavedCredentials();
   }, []);
 
-  const styles = getStyles(darkMode);
-
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Image
-          source={{
-            uri: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg',
-          }}
-          style={styles.logo}
-        />
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            placeholder="Usuário"
-            value={username}
-            onChangeText={setUsername}
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          <TextInput
-            placeholder="Senha"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-
-          <View style={styles.checkboxContainer}>
-            <Checkbox
-              value={rememberMe}
-              onValueChange={setRememberMe}
-              color={rememberMe ? '#E50914' : undefined}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
+          <View style={[styles.card, { backgroundColor: colors.surface }]}> 
+            <Image
+              source={{
+                uri: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg',
+              }}
+              style={styles.logo}
             />
-            <Text style={styles.checkboxLabel}>Lembrar login</Text>
+
+            <Text style={[styles.title, { color: colors.text }]}>Entrar no CineAI</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}> 
+              Acesse a sua conta e deixe a inteligência artificial sugerir o próximo filme.
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Usuário</Text>
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="nome@email.com"
+                placeholderTextColor={colors.textMuted}
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Senha</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="••••••••"
+                placeholderTextColor={colors.textMuted}
+              />
+
+              <View style={styles.checkboxContainer}>
+                <ExpoCheckbox
+                  value={rememberMe}
+                  onValueChange={setRememberMe}
+                  color={rememberMe ? colors.accent : undefined}
+                />
+                <Text style={[styles.checkboxLabel, { color: colors.textMuted }]}>Lembrar login</Text>
+              </View>
+
+              {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
+
+              <Pressable style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleLogin}>
+                <Text style={styles.buttonText}>Entrar</Text>
+              </Pressable>
+            </View>
+
+            <Text style={[styles.or, { color: colors.textMuted }]}>Ou entre com</Text>
+
+            <View style={styles.socialIcons}>
+              <FontAwesome name="facebook-f" size={22} color={colors.text} style={styles.icon} />
+              <FontAwesome name="google" size={22} color={colors.text} style={styles.icon} />
+              <FontAwesome name="apple" size={22} color={colors.text} style={styles.icon} />
+            </View>
+
+            <View style={styles.registerContainer}>
+              <Text style={[styles.registerText, { color: colors.textMuted }]}>Não tem uma conta? </Text>
+              <Pressable onPress={() => router.push('/(tabs)/RegisterPage')}>
+                <Text style={[styles.registerLink, { color: colors.accent }]}>Cadastre-se</Text>
+              </Pressable>
+            </View>
           </View>
-
-          <Pressable style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Entrar</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.or}>Ou entre com</Text>
-
-        <View style={styles.socialIcons}>
-          <FontAwesome name="facebook-f" size={24} color="#333" style={styles.icon} />
-          <FontAwesome name="google" size={24} color="#333" style={styles.icon} />
-          <FontAwesome name="apple" size={24} color="#333" style={styles.icon} />
-        </View>
-
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Não tem uma conta? </Text>
-          <Pressable onPress={() => router.push('/RegisterPage')}>
-            <Text style={styles.registerLink}>Cadastre-se</Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
+        </KeyboardAvoidingView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-    },
-    card: {
-      backgroundColor: isDark ? '#1e1e1e' : '#fff',
-      width: '90%',
-      maxWidth: 425,
-      padding: 30,
-      borderRadius: 10,
-      alignItems: 'center',
-      elevation: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
-    logo: {
-      width: 70,
-      height: 70,
-      marginBottom: 20,
-    },
-    inputContainer: {
-      width: '100%',
-    },
-    input: {
-      width: '100%',
-      borderWidth: 1,
-      borderColor: '#ccc',
-      borderRadius: 6,
-      padding: 12,
-      marginBottom: 10,
-      color: isDark ? '#fff' : '#000',
-      backgroundColor: isDark ? '#2a2a2a' : '#fff',
-    },
-    checkboxContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    checkboxLabel: {
-      marginLeft: 8,
-      color: isDark ? '#eee' : '#333',
-    },
-    button: {
-      backgroundColor: '#E50914',
-      paddingVertical: 12,
-      borderRadius: 6,
-      marginTop: 10,
-      alignItems: 'center',
-    },
-    buttonText: {
-      color: '#fff',
-      fontWeight: '700',
-    },
-    or: {
-      marginTop: 25,
-      color: isDark ? '#ccc' : '#333',
-    },
-    socialIcons: {
-      flexDirection: 'row',
-      marginTop: 15,
-    },
-    icon: {
-      marginHorizontal: 10,
-    },
-    registerContainer: {
-      flexDirection: 'row',
-      marginTop: 25,
-    },
-    registerText: {
-      color: isDark ? '#ccc' : '#333',
-    },
-    registerLink: {
-      color: '#E50914',
-      fontWeight: 'bold',
-    },
-  });
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  flex: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  card: {
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    gap: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
+  },
+  logo: {
+    width: 74,
+    height: 74,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  inputContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: 'transparent',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  button: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  or: {
+    marginTop: 8,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  socialIcons: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 18,
+  },
+  icon: {
+    padding: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  registerText: {
+    fontSize: 13,
+  },
+  registerLink: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});

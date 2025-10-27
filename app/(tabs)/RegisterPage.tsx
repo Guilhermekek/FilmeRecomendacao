@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../context/ThemeContext';
 
 export default function RegisterPage() {
+  const { colors, darkMode } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { darkMode } = useTheme();
-  const styles = getStyles(darkMode);
 
   const handleRegister = () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -33,106 +36,132 @@ export default function RegisterPage() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Image
-          source={{
-            uri: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg',
-          }}
-          style={styles.logo}
-        />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
+          <View style={[styles.card, { backgroundColor: colors.surface }]}> 
+            <Text style={[styles.title, { color: colors.text }]}>Criar conta no CineAI</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}> 
+              Cadastre-se para salvar favoritos, acompanhar diretores e personalizar recomendações.
+            </Text>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            placeholder="Nome"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          <TextInput
-            placeholder="E-mail"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            keyboardType="email-address"
-            placeholderTextColor="#999"
-          />
-          <TextInput
-            placeholder="Senha"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          <TextInput
-            placeholder="Confirmar Senha"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Nome completo</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="Guilherme Silva"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
 
-          <Pressable style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Cadastrar</Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>E-mail</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="voce@email.com"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Senha</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="Crie uma senha forte"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Confirmar senha</Text>
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+                placeholder="Repita a senha"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            <Pressable style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleRegister}>
+              <Text style={styles.buttonText}>Cadastrar</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-    },
-    card: {
-      backgroundColor: isDark ? '#1e1e1e' : '#fff',
-      width: '90%',
-      maxWidth: 425,
-      padding: 30,
-      borderRadius: 10,
-      alignItems: 'center',
-      elevation: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
-    logo: {
-      width: 70,
-      height: 70,
-      marginBottom: 20,
-    },
-    inputContainer: {
-      width: '100%',
-    },
-    input: {
-      width: '100%',
-      borderWidth: 1,
-      borderColor: '#ccc',
-      borderRadius: 6,
-      padding: 12,
-      marginBottom: 10,
-      color: isDark ? '#fff' : '#000',
-      backgroundColor: isDark ? '#2a2a2a' : '#fff',
-    },
-    button: {
-      backgroundColor: '#E50914',
-      paddingVertical: 12,
-      borderRadius: 6,
-      marginTop: 10,
-      alignItems: 'center',
-    },
-    buttonText: {
-      color: '#fff',
-      fontWeight: '700',
-    },
-  });
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  flex: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  card: {
+    borderRadius: 28,
+    padding: 28,
+    gap: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  fieldGroup: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: 'transparent',
+  },
+  button: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+});
