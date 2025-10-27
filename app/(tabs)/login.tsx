@@ -2,6 +2,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ExpoCheckbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
   Image,
@@ -15,7 +16,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../context/ThemeContext';
 
 const STORAGE_KEYS = {

@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useTheme } from '../context/ThemeContext';
 import { SectionHeader } from '../components/SectionHeader';
+import { useTheme } from '../context/ThemeContext';
 
 const STORAGE_KEYS = {
   notifications: '@cineai/notifications',
