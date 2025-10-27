@@ -41,8 +41,6 @@ export default function TabLayout() {
       <Tabs.Screen name="FilmesEmCartaz" options={{ title: 'Em cartaz' }} />
       <Tabs.Screen name="settings" options={{ title: 'Preferências' }} />
       <Tabs.Screen name="about" options={{ title: 'Sobre' }} />
-      <Tabs.Screen name="login" options={{ href: null }} />
-      <Tabs.Screen name="RegisterPage" options={{ href: null }} />
     </Tabs>
   );
 }

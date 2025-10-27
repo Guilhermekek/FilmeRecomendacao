@@ -2,8 +2,9 @@ import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ExpoCheckbox from 'expo-checkbox';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from './context/ThemeContext';
 
 const STORAGE_KEYS = {
   username: '@cineai/username',
@@ -30,6 +31,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const splashScale = useRef(new Animated.Value(0.7)).current;
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -71,15 +75,66 @@ export default function LoginPage() {
     loadSavedCredentials();
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    const animation = Animated.sequence([
+      Animated.spring(splashScale, {
+        toValue: 1,
+        tension: 120,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+        duration: 400,
+        delay: 900,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(() => {
+      if (isMounted) {
+        setShowSplash(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      animation.stop();
+    };
+  }, [splashOpacity, splashScale]);
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
-      <StatusBar style={darkMode ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar style={showSplash || darkMode ? 'light' : 'dark'} />
+      {showSplash ? (
+        <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}> 
+          <Animated.Image
+            source={{
+              uri: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg',
+            }}
+            style={[styles.splashLogo, { transform: [{ scale: splashScale }] }]}
+          />
+        </Animated.View>
+      ) : null}
+      {!showSplash ? (
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            Platform.OS === 'web' && styles.scrollContentWeb,
+          ]}
         >
-          <View style={[styles.card, { backgroundColor: colors.surface }]}> 
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.flex, Platform.OS === 'web' && styles.flexWeb]}
+          >
+          <View
+            style={[
+              styles.card,
+              Platform.OS === 'web' && styles.cardWeb,
+              { backgroundColor: colors.surface },
+            ]}
+          >
             <Image
               source={{
                 uri: 'https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg',
@@ -138,13 +193,14 @@ export default function LoginPage() {
 
             <View style={styles.registerContainer}>
               <Text style={[styles.registerText, { color: colors.textMuted }]}>Não tem uma conta? </Text>
-              <Pressable onPress={() => router.push('/(tabs)/RegisterPage')}>
+              <Pressable onPress={() => router.push('/RegisterPage')}>
                 <Text style={[styles.registerLink, { color: colors.accent }]}>Cadastre-se</Text>
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </ScrollView>
+          </KeyboardAvoidingView>
+        </ScrollView>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -153,14 +209,32 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  splashLogo: {
+    width: 120,
+    height: 120,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
+  scrollContentWeb: {
+    alignItems: 'center',
+  },
   flex: {
     flex: 1,
     justifyContent: 'center',
+  },
+  flexWeb: {
+    width: '100%',
+    alignItems: 'center',
   },
   card: {
     borderRadius: 28,
@@ -172,6 +246,11 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
     elevation: 6,
+  },
+  cardWeb: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   logo: {
     width: 74,

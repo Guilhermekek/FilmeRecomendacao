@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from './context/ThemeContext';
 
 export default function RegisterPage() {
   const { colors, darkMode } = useTheme();
@@ -38,12 +38,23 @@ export default function RegisterPage() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
       <StatusBar style={darkMode ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          Platform.OS === 'web' && styles.contentWeb,
+        ]}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
+          style={[styles.flex, Platform.OS === 'web' && styles.flexWeb]}
         >
-          <View style={[styles.card, { backgroundColor: colors.surface }]}> 
+          <View
+            style={[
+              styles.card,
+              Platform.OS === 'web' && styles.cardWeb,
+              { backgroundColor: colors.surface },
+            ]}
+          >
             <Text style={[styles.title, { color: colors.text }]}>Criar conta no CineAI</Text>
             <Text style={[styles.subtitle, { color: colors.textMuted }]}> 
               Cadastre-se para salvar favoritos, acompanhar diretores e personalizar recomendações.
@@ -115,9 +126,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
+  contentWeb: {
+    alignItems: 'center',
+  },
   flex: {
     flex: 1,
     justifyContent: 'center',
+  },
+  flexWeb: {
+    width: '100%',
+    alignItems: 'center',
   },
   card: {
     borderRadius: 28,
@@ -128,6 +146,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
     elevation: 6,
+  },
+  cardWeb: {
+    width: '100%',
+    maxWidth: 480,
   },
   title: {
     fontSize: 24,

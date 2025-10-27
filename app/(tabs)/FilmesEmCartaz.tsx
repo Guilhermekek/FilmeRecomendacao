@@ -20,7 +20,9 @@ export default function FilmesEmCartazScreen() {
   const { colors, darkMode } = useTheme();
   const { movies, loading, error, refresh, offline } = useNowPlaying({ limit: 60 });
 
-  const gridData = useMemo(() => movies.slice(0, 40), [movies]);
+  const carouselData = useMemo(() => movies.slice(0, 12), [movies]);
+  const highlightCount = carouselData.length;
+  const gridData = useMemo(() => movies.slice(highlightCount, 60), [movies, highlightCount]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -31,6 +33,7 @@ export default function FilmesEmCartazScreen() {
         keyExtractor={item => item.titulo}
         numColumns={2}
         columnWrapperStyle={styles.column}
+        ListHeaderComponentStyle={styles.headerContainer}
         ListHeaderComponent={
           <View style={styles.header}>
             <SectionHeader
@@ -47,6 +50,38 @@ export default function FilmesEmCartazScreen() {
                 actionLabel="Recarregar"
                 onPress={() => refresh()}
                 tone="danger"
+              />
+            ) : null}
+            {carouselData.length ? (
+              <FlatList
+                data={carouselData}
+                horizontal
+                keyExtractor={item => `${item.titulo}-carousel`}
+                showsHorizontalScrollIndicator={false}
+                snapToAlignment="center"
+                pagingEnabled
+                decelerationRate="fast"
+                snapToInterval={236}
+                contentContainerStyle={styles.carouselContent}
+                renderItem={({ item, index }) => (
+                  <MovieCard
+                    movie={item}
+                    size="large"
+                    style={[
+                      styles.carouselItem,
+                      index === carouselData.length - 1 && styles.carouselItemLast,
+                    ]}
+                    onPress={movie => {
+                      if (movie.trailer) {
+                        Linking.openURL(movie.trailer).catch(() =>
+                          Alert.alert('Ops!', 'Não foi possível abrir o trailer agora.'),
+                        );
+                      } else {
+                        Alert.alert('Trailer indisponível', 'Adicionaremos um trailer em breve.');
+                      }
+                    }}
+                  />
+                )}
               />
             ) : null}
           </View>
@@ -81,7 +116,7 @@ export default function FilmesEmCartazScreen() {
               <ActivityIndicator size="small" color={colors.accent} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>Carregando filmes...</Text>
             </View>
-          ) : (
+          ) : carouselData.length ? null : (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>Nenhum título encontrado.</Text>
             </View>
@@ -100,12 +135,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 24,
   },
+  headerContainer: {
+    paddingBottom: 16,
+  },
   header: {
     marginBottom: 16,
-    gap: 16,
+    gap: 24,
   },
   column: {
     justifyContent: 'space-between',
+  },
+  carouselContent: {
+    paddingVertical: 8,
+    paddingRight: 24,
+  },
+  carouselItem: {
+    marginRight: 16,
+  },
+  carouselItemLast: {
+    marginRight: 0,
   },
   rating: {
     fontSize: 12,
