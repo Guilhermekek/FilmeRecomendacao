@@ -1,19 +1,48 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '../context/ThemeContext';
+import { SectionHeader } from '../components/SectionHeader';
+
+const STORAGE_KEYS = {
+  notifications: '@cineai/notifications',
+  autoPlay: '@cineai/autoplay',
+};
+
+interface SettingRowProps {
+  label: string;
+  description?: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}
+
+function SettingRow({ label, description, value, onValueChange }: SettingRowProps) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.settingRow, { borderBottomColor: colors.border }]}> 
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+        {description ? (
+          <Text style={[styles.description, { color: colors.textMuted }]}>{description}</Text>
+        ) : null}
+      </View>
+      <Switch value={value} onValueChange={onValueChange} thumbColor={colors.accent} />
+    </View>
+  );
+}
 
 export default function SettingsPage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode, colors } = useTheme();
   const [notifications, setNotifications] = useState(false);
   const [autoPlayTrailers, setAutoPlayTrailers] = useState(false);
 
   useEffect(() => {
     const loadPreferences = async () => {
-      const dark = await AsyncStorage.getItem('darkMode');
-      const notif = await AsyncStorage.getItem('notifications');
-      const autoPlay = await AsyncStorage.getItem('autoPlayTrailers');
+      const notif = await AsyncStorage.getItem(STORAGE_KEYS.notifications);
+      const autoPlay = await AsyncStorage.getItem(STORAGE_KEYS.autoPlay);
 
-      if (dark !== null) setDarkMode(dark === 'true');
       if (notif !== null) setNotifications(notif === 'true');
       if (autoPlay !== null) setAutoPlayTrailers(autoPlay === 'true');
     };
@@ -21,58 +50,67 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem('darkMode', darkMode.toString());
-  }, [darkMode]);
-
-  useEffect(() => {
-    AsyncStorage.setItem('notifications', notifications.toString());
+    AsyncStorage.setItem(STORAGE_KEYS.notifications, notifications.toString());
   }, [notifications]);
 
   useEffect(() => {
-    AsyncStorage.setItem('autoPlayTrailers', autoPlayTrailers.toString());
+    AsyncStorage.setItem(STORAGE_KEYS.autoPlay, autoPlayTrailers.toString());
   }, [autoPlayTrailers]);
 
-  const isDark = darkMode;
-  const styles = getStyles(isDark);
-
   return (
-    <View style={styles.container}>
-      <View style={styles.settingRow}>
-        <Text style={styles.label}>Modo escuro</Text>
-        <Switch value={darkMode} onValueChange={setDarkMode} />
-      </View>
-
-      <View style={styles.settingRow}>
-        <Text style={styles.label}>Receber notificações</Text>
-        <Switch value={notifications} onValueChange={setNotifications} />
-      </View>
-
-      <View style={styles.settingRow}>
-        <Text style={styles.label}>Reproduzir trailers automaticamente</Text>
-        <Switch value={autoPlayTrailers} onValueChange={setAutoPlayTrailers} />
-      </View>
-    </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <SectionHeader
+          title="Preferências"
+          subtitle="Ajuste como o CineAI interage com você"
+        />
+        <SettingRow
+          label="Modo escuro"
+          description="Ideal para ambientes com pouca luz"
+          value={darkMode}
+          onValueChange={toggleDarkMode}
+        />
+        <SettingRow
+          label="Receber notificações"
+          description="Alertas de novos lançamentos com atores e diretores favoritos"
+          value={notifications}
+          onValueChange={setNotifications}
+        />
+        <SettingRow
+          label="Reproduzir trailers automaticamente"
+          description="Tocar automaticamente os trailers ao abrir um detalhe de filme"
+          value={autoPlayTrailers}
+          onValueChange={setAutoPlayTrailers}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      padding: 24,
-      backgroundColor: isDark ? '#121212' : '#fff',
-      justifyContent: 'center',
-    },
-    settingRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#444' : '#ccc',
-    },
-    label: {
-      fontSize: 16,
-      color: isDark ? '#eee' : '#333',
-    },
-  });
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+    gap: 12,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  description: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+});
